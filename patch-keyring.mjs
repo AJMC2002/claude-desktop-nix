@@ -37,7 +37,7 @@ try {
   const original = found.data.toString();
   const patched = original.replace(
     'var oe="/usr/bin/secret-tool",M="/usr/bin/kwallet-query"',
-    'var oe=process.env.CLAUDE_SECRET_TOOL??"secret-tool",M=process.env.CLAUDE_KWALLET_QUERY??"kwallet-query"',
+    'var oe=process.env.CS,M=process.env.CK',
   );
   if (patched === original) throw new Error('Unexpected Claude keyring implementation');
   const data = Buffer.from(patched);
