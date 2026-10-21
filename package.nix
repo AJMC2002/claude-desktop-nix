@@ -13,6 +13,7 @@
   freetype,
   glib,
   gtk3,
+  kdePackages,
   lib,
   libdrm,
   libgbm,
@@ -32,6 +33,7 @@
   libxrandr,
   libxtst,
   makeWrapper,
+  nodejs,
   nspr,
   nss,
   pango,
@@ -62,7 +64,7 @@ in
       hash = hashes.${arch};
     };
 
-    nativeBuildInputs = [autoPatchelfHook makeWrapper xz];
+    nativeBuildInputs = [autoPatchelfHook makeWrapper nodejs xz];
     buildInputs = [
       alsa-lib
       at-spi2-atk
@@ -115,13 +117,15 @@ in
       mv "$out/usr/lib" "$out/lib"
       mv "$out/usr/share" "$out/share"
       rmdir "$out/usr"
+      # Anthropic hardcodes FHS paths; NixOS supplies these tools in the wrapper PATH.
+      node ${./patch-keyring.mjs} "$out/lib/claude-desktop/resources/app.asar"
       # Setuid sandbox cannot work in the Nix store; Electron uses user namespaces.
       rm "$out/lib/claude-desktop/chrome-sandbox"
       substituteInPlace "$out/share/applications/com.anthropic.Claude.desktop" \
         --replace-fail 'Exec=claude-desktop ' "Exec=$out/bin/claude-desktop "
       makeWrapper "$out/lib/claude-desktop/claude-desktop" "$out/bin/claude-desktop" \
         --chdir "$out/lib/claude-desktop" \
-        --prefix PATH : ${lib.makeBinPath [libsecret xdg-utils]} \
+        --prefix PATH : ${lib.makeBinPath [libsecret kdePackages.kwallet xdg-utils]} \
         --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [libsecret libglvnd libgbm]}
     '';
 
