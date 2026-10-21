@@ -4,6 +4,18 @@ import {openSync, readSync, writeSync, closeSync} from 'node:fs';
 const archive = process.argv[2];
 const fd = openSync(archive, 'r+');
 const hash = data => createHash('sha256').update(data).digest('hex');
+const replacePadded = (data, oldText, newText) => {
+  const oldBytes = Buffer.from(oldText);
+  const newBytes = Buffer.from(newText);
+  if (newBytes.length > oldBytes.length) throw new Error(`Replacement grew: ${oldText}`);
+  let count = 0;
+  for (let offset = data.indexOf(oldBytes); offset >= 0; offset = data.indexOf(oldBytes, offset + oldBytes.length)) {
+    newBytes.copy(data, offset);
+    data.fill(0x20, offset + newBytes.length, offset + oldBytes.length);
+    count++;
+  }
+  return count;
+};
 
 try {
   const prefix = Buffer.alloc(16);
@@ -27,36 +39,22 @@ try {
       if (entry.size < 1 || entry.offset === undefined) continue;
       const data = Buffer.alloc(entry.size);
       readSync(fd, data, 0, data.length, entryOffset + Number(entry.offset));
-      const original = data.toString();
-      const hasBusctl = original.includes('"/usr/bin/busctl"');
-      const hasKeyring = original.includes('/usr/bin/secret-tool') && original.includes('/usr/bin/kwallet-query');
-      if (!hasBusctl && !hasKeyring) continue;
-
-      let patched = original;
-      if (hasBusctl) {
-        patched = patched.replaceAll('"/usr/bin/busctl"', 'process.env.CB');
-        busctlPatched ||= patched !== original;
-      }
-      if (hasKeyring) {
-        patched = patched.replace(
-          'var oe="/usr/bin/secret-tool",M="/usr/bin/kwallet-query"',
-          'var oe=process.env.CS,M=process.env.CK',
-        );
-        keyringPatched ||= patched !== original;
-      }
-      if (patched === original || patched.includes('"/usr/bin/busctl"')) {
-        throw new Error(`Unexpected Claude keyring implementation in ${name}`);
-      }
-      const replacement = Buffer.from(patched);
-      if (replacement.length > data.length) throw new Error(`Keyring patch grew ASAR entry ${name}`);
-      replacement.copy(data);
-      data.fill(0x20, replacement.length);
-      entry.integrity.hash = hash(data);
-      entry.integrity.blocks = Array.from(
-        {length: Math.ceil(data.length / entry.integrity.blockSize)},
-        (_, i) => hash(data.subarray(i * entry.integrity.blockSize, (i + 1) * entry.integrity.blockSize)),
+      const busctlCount = replacePadded(data, '"/usr/bin/busctl"', 'process.env.CB');
+      const keyringCount = replacePadded(
+        data,
+        'var oe="/usr/bin/secret-tool",M="/usr/bin/kwallet-query"',
+        'var oe=process.env.CS,M=process.env.CK',
       );
-      patchedEntries.push({name, entry, data});
+      if (busctlCount || keyringCount) {
+        busctlPatched ||= busctlCount > 0;
+        keyringPatched ||= keyringCount > 0;
+        entry.integrity.hash = hash(data);
+        entry.integrity.blocks = Array.from(
+          {length: Math.ceil(data.length / entry.integrity.blockSize)},
+          (_, i) => hash(data.subarray(i * entry.integrity.blockSize, (i + 1) * entry.integrity.blockSize)),
+        );
+        patchedEntries.push({name, entry, data});
+      }
     }
   };
   visit(header.files);
