@@ -121,8 +121,8 @@ in
         --replace-fail 'Exec=claude-desktop ' "Exec=$out/bin/claude-desktop "
       makeWrapper "$out/lib/claude-desktop/claude-desktop" "$out/bin/claude-desktop" \
         --chdir "$out/lib/claude-desktop" \
-        --prefix PATH : ${lib.makeBinPath [xdg-utils]} \
-        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [libglvnd libgbm]}
+        --prefix PATH : ${lib.makeBinPath [libsecret xdg-utils]} \
+        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [libsecret libglvnd libgbm]}
     '';
 
     meta = {
