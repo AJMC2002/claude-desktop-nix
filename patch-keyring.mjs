@@ -25,7 +25,7 @@ try {
       if (entry.size < 1 || entry.offset === undefined) continue;
       const data = Buffer.alloc(entry.size);
       readSync(fd, data, 0, data.length, entryOffset + Number(entry.offset));
-      if (data.includes('/usr/bin/secret-tool') && data.includes('/usr/bin/kwallet-query')) {
+      if (data.includes('/usr/bin/busctl') && data.includes('/usr/bin/secret-tool') && data.includes('/usr/bin/kwallet-query')) {
         if (found) throw new Error('Multiple keyring implementations found');
         found = {name, entry, data};
       }
@@ -35,11 +35,13 @@ try {
   if (!found) throw new Error('Claude keyring implementation not found');
 
   const original = found.data.toString();
-  const patched = original.replace(
-    'var oe="/usr/bin/secret-tool",M="/usr/bin/kwallet-query"',
-    'var oe=process.env.CS,M=process.env.CK',
-  );
-  if (patched === original) throw new Error('Unexpected Claude keyring implementation');
+  const patched = original
+    .replaceAll('"/usr/bin/busctl"', 'process.env.CB')
+    .replace(
+      'var oe="/usr/bin/secret-tool",M="/usr/bin/kwallet-query"',
+      'var oe=process.env.CS,M=process.env.CK',
+    );
+  if (patched === original || patched.includes('/usr/bin/busctl')) throw new Error('Unexpected Claude keyring implementation');
   const data = Buffer.from(patched);
   if (data.length > found.data.length) throw new Error('Keyring patch grew the ASAR entry');
   data.copy(found.data);
