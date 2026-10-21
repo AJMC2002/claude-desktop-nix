@@ -125,6 +125,8 @@ in
         --replace-fail 'Exec=claude-desktop ' "Exec=$out/bin/claude-desktop "
       makeWrapper "$out/lib/claude-desktop/claude-desktop" "$out/bin/claude-desktop" \
         --chdir "$out/lib/claude-desktop" \
+        --set CLAUDE_SECRET_TOOL ${libsecret}/bin/secret-tool \
+        --set CLAUDE_KWALLET_QUERY ${kdePackages.kwallet}/bin/kwallet-query \
         --prefix PATH : ${lib.makeBinPath [libsecret kdePackages.kwallet xdg-utils]} \
         --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [libsecret libglvnd libgbm]}
     '';
