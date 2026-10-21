@@ -17,7 +17,7 @@ environment.systemPackages = [
 ];
 ```
 
-The package installs `claude-desktop`, Anthropic's `.desktop` file, and hicolor icons. If KDE does not show the new app in search immediately after switching generations, run `kbuildsycoca6 --noincremental` and restart Plasma or log in again.
+The package installs `claude-desktop`, Anthropic's `.desktop` file, and hicolor icons. Desktop environments should add it to their application launcher; refresh the launcher or start a new session if it does not appear immediately.
 
 ### Browser cookie import
 
